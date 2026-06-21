@@ -4,10 +4,12 @@ import { supabase } from "../lib/supabase";
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
 
   async function loadCustomers() {
@@ -21,17 +23,21 @@ export default function Customers() {
 
   async function addCustomer() {
     await supabase.from("customers").insert({
-      name,
+      first_name: firstName,
+      last_name: lastName,
       phone,
       email,
-      address,
+      street_address: streetAddress,
+      city,
       notes,
     });
 
-    setName("");
+    setFirstName("");
+    setLastName("");
     setPhone("");
     setEmail("");
-    setAddress("");
+    setStreetAddress("");
+    setCity("");
     setNotes("");
 
     loadCustomers();
@@ -46,9 +52,17 @@ export default function Customers() {
       <h1>Customers</h1>
 
       <input
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        placeholder="First Name"
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+      />
+
+      <br /><br />
+
+      <input
+        placeholder="Last Name"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
       />
 
       <br /><br />
@@ -70,9 +84,17 @@ export default function Customers() {
       <br /><br />
 
       <input
-        placeholder="Address"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
+        placeholder="Street Address"
+        value={streetAddress}
+        onChange={(e) => setStreetAddress(e.target.value)}
+      />
+
+      <br /><br />
+
+      <input
+        placeholder="City"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
       />
 
       <br /><br />
@@ -93,11 +115,11 @@ export default function Customers() {
 
       {customers.map((customer) => (
         <div key={customer.id}>
-          <strong>{customer.name}</strong>
+          <strong>{customer.first_name} {customer.last_name}</strong>
           <br />
           {customer.phone}
           <br />
-          {customer.address}
+          {customer.street_address}, {customer.city}
           <hr />
         </div>
       ))}

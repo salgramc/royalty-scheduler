@@ -17,12 +17,12 @@ export default function Bookings() {
     const { data: customersData } = await supabase
       .from("customers")
       .select("*")
-      .order("name");
+      .order("first_name");
 
     const { data: cleanersData } = await supabase
       .from("cleaners")
       .select("*")
-      .order("name");
+      .order("first_name");
 
     const { data: bookingsData } = await supabase
       .from("bookings")
@@ -38,30 +38,58 @@ export default function Bookings() {
 
   async function addBooking() {
     if (
-      !customerId ||
-      !cleanerId ||
-      !cleaningDate ||
-      !serviceType
+        !customerId ||
+        !cleanerId ||
+        !cleaningDate ||
+        !serviceType
     ) {
-      alert("Please fill out all required fields.");
-      return;
+        alert("Please fill out all required fields.");
+        return;
     }
 
-    const { error } = await supabase
-      .from("bookings")
-      .insert({
+    const bookingsToInsert = [];
+
+    let repeatCount = 1;
+
+    if (serviceType === "Recurring Cleaning") {
+        if (frequency === "weekly") repeatCount = 12;
+        if (frequency === "biweekly") repeatCount = 12;
+        if (frequency === "monthly") repeatCount = 6;
+    }
+
+    for (let i = 0; i < repeatCount; i++) {
+        const date = new Date(cleaningDate + "T00:00:00");
+
+        if (frequency === "weekly") {
+        date.setDate(date.getDate() + i * 7);
+        }
+
+        if (frequency === "biweekly") {
+        date.setDate(date.getDate() + i * 14);
+        }
+
+        if (frequency === "monthly") {
+        date.setMonth(date.getMonth() + i);
+        }
+
+        bookingsToInsert.push({
         customer_id: customerId,
         cleaner_id: cleanerId,
-        cleaning_date: cleaningDate,
+        cleaning_date: date.toISOString().split("T")[0],
         cleaning_time: cleaningTime,
         frequency,
         service_type: serviceType,
         status: "Scheduled",
-      });
+        });
+    }
+
+    const { error } = await supabase
+        .from("bookings")
+        .insert(bookingsToInsert);
 
     if (error) {
-      alert(error.message);
-      return;
+        alert(error.message);
+        return;
     }
 
     setCustomerId("");
@@ -109,7 +137,7 @@ export default function Bookings() {
             key={customer.id}
             value={customer.id}
           >
-            {customer.name}
+            {customer.first_name} {customer.last_name}
           </option>
         ))}
       </select>
@@ -132,7 +160,8 @@ export default function Bookings() {
             key={cleaner.id}
             value={cleaner.id}
           >
-            {cleaner.name}
+            {cleaner.first_name}{" "}
+            {cleaner.last_name}
           </option>
         ))}
       </select>
@@ -242,19 +271,19 @@ export default function Bookings() {
             }}
           >
             <strong>
-              {customer?.name}
+              {customer?.first_name} {customer?.last_name}
             </strong>
 
             <br />
 
             📍{" "}
-            {customer?.address ||
-              "No Address"}
+            {customer?.street_address && customer?.city ? `${customer.street_address}, ${customer.city}` : customer?.street_address || customer?.city || "No Address"}
 
             <br />
 
             👤 Assigned To:{" "}
-            {cleaner?.name}
+            {cleaner?.first_name}{" "}
+            {cleaner?.last_name}
 
             <br />
 

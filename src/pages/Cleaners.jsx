@@ -4,7 +4,8 @@ import { supabase } from "../lib/supabase";
 export default function Cleaners() {
   const [cleaners, setCleaners] = useState([]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
@@ -18,13 +19,27 @@ export default function Cleaners() {
   }
 
   async function addCleaner() {
-    await supabase.from("cleaners").insert({
-      name,
-      phone,
-      email,
-    });
+    if (!firstName || !lastName) {
+      alert("First name and last name are required.");
+      return;
+    }
 
-    setName("");
+    const { error } = await supabase
+      .from("cleaners")
+      .insert({
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        email,
+      });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setFirstName("");
+    setLastName("");
     setPhone("");
     setEmail("");
 
@@ -40,28 +55,48 @@ export default function Cleaners() {
       <h1>Cleaners</h1>
 
       <input
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        placeholder="First Name"
+        value={firstName}
+        onChange={(e) =>
+          setFirstName(e.target.value)
+        }
       />
 
-      <br /><br />
+      <br />
+      <br />
+
+      <input
+        placeholder="Last Name"
+        value={lastName}
+        onChange={(e) =>
+          setLastName(e.target.value)
+        }
+      />
+
+      <br />
+      <br />
 
       <input
         placeholder="Phone"
         value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={(e) =>
+          setPhone(e.target.value)
+        }
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <input
         placeholder="Email"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) =>
+          setEmail(e.target.value)
+        }
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <button onClick={addCleaner}>
         Add Cleaner
@@ -70,11 +105,27 @@ export default function Cleaners() {
       <hr />
 
       {cleaners.map((cleaner) => (
-        <div key={cleaner.id}>
-          <strong>{cleaner.name}</strong>
+        <div
+          key={cleaner.id}
+          style={{
+            background: "#fff",
+            border: "1px solid #E5E7EB",
+            borderRadius: "12px",
+            padding: "16px",
+            marginBottom: "12px",
+          }}
+        >
+          <strong>
+            {cleaner.first_name} {cleaner.last_name}
+          </strong>
+
           <br />
+
+          {cleaner.email}
+
+          <br />
+
           {cleaner.phone}
-          <hr />
         </div>
       ))}
     </div>

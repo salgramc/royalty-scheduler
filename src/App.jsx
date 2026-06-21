@@ -1,38 +1,35 @@
-import { useState } from "react";
-import Customers from "./pages/Customers";
-import Cleaners from "./pages/Cleaners";
-import Bookings from "./pages/Bookings";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+
+import Login from "./pages/Login";
+import ProtectedApp from "./components/ProtectedApp";
 
 function App() {
-  const [page, setPage] = useState("customers");
+  const [session, setSession] = useState(null);
 
-  return (
-    <div>
-      <div style={{ padding: 20 }}>
-        <button onClick={() => setPage("customers")}>
-          Customers
-        </button>
+  useEffect(() => {
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+      });
 
-        <button
-          onClick={() => setPage("cleaners")}
-          style={{ marginLeft: 10 }}
-        >
-          Cleaners
-        </button>
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
 
-        <button
-          onClick={() => setPage("bookings")}
-          style={{ marginLeft: 10 }}
-        >
-          Bookings
-        </button>
-      </div>
+    return () => subscription.unsubscribe();
+  }, []);
 
-      {page === "customers" && <Customers />}
-      {page === "cleaners" && <Cleaners />}
-      {page === "bookings" && <Bookings />}
-    </div>
-  );
+  if (!session) {
+    return <Login />;
+  }
+
+  return <ProtectedApp />;
 }
 
 export default App;
