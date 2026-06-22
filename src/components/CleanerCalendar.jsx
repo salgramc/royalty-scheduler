@@ -87,10 +87,10 @@ export default function CleanerCalendar({
         endAccessor="end"
         titleAccessor="title"
         views={["day", "week"]}
-        min={new Date(2026, 0, 1, 7, 0)}
+        min={new Date(2026, 0, 1, 6, 0)}
         max={new Date(2026, 0, 1, 19, 0)}
         scrollToTime={
-          new Date(2026, 0, 1, 8, 0)
+          new Date(2026, 0, 1, 6, 0)
         }
         onSelectEvent={onSelectEvent}
         formats={{
