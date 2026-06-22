@@ -81,11 +81,14 @@ export default function CleanerDashboard() {
         booking.cleaning_time || "09:00"
       ).split(":");
 
-      const start = new Date(
-        booking.cleaning_date
-      );
+      // FIX TIMEZONE ISSUE
+      const [year, month, day] =
+        booking.cleaning_date.split("-");
 
-      start.setHours(
+      const start = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
         Number(hours),
         Number(minutes)
       );
