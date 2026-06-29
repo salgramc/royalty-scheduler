@@ -6,6 +6,7 @@ import CleanerCalendar from "../components/CleanerCalendar";
 export default function CleanerDashboard() {
   const [bookings, setBookings] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [properties, setProperties] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
 
   async function loadData() {
@@ -32,13 +33,24 @@ export default function CleanerDashboard() {
       .from("customers")
       .select("*");
 
+    const { data: propertiesData } = await supabase
+      .from("properties")
+      .select("*");
+
     setBookings(bookingsData || []);
     setCustomers(customersData || []);
+    setProperties(propertiesData || []);
   }
 
   function getCustomer(id) {
     return customers.find(
       (c) => Number(c.id) === Number(id)
+    );
+  }
+
+  function getProperty(id) {
+    return properties.find(
+      (p) => Number(p.id) === Number(id)
     );
   }
 
@@ -71,17 +83,33 @@ export default function CleanerDashboard() {
         booking.customer_id
       );
 
-      const title = customer
-        ? `${formatTime(
-            booking.cleaning_time
-          )} - ${customer.first_name} ${customer.last_name}`
-        : "Customer";
+      const property = getProperty(
+        booking.property_id
+      );
+
+      const title =
+        booking.booking_type ===
+        "Airbnb"
+          ? `${formatTime(
+              booking.cleaning_time
+            )} - ${
+              property?.property_name ||
+              "Property"
+            }`
+          : customer
+          ? `${formatTime(
+              booking.cleaning_time
+            )} - ${
+              customer.first_name
+            } ${
+              customer.last_name
+            }`
+          : "Customer";
 
       const [hours, minutes] = (
         booking.cleaning_time || "09:00"
       ).split(":");
 
-      // FIX TIMEZONE ISSUE
       const [year, month, day] =
         booking.cleaning_date.split("-");
 
@@ -95,8 +123,8 @@ export default function CleanerDashboard() {
 
       const end = new Date(start);
 
-      end.setHours(
-        start.getHours() + 1
+      end.setMinutes(
+        end.getMinutes() + 60
       );
 
       return {
@@ -176,6 +204,9 @@ export default function CleanerDashboard() {
           booking={selectedJob}
           customer={getCustomer(
             selectedJob.customer_id
+          )}
+          property={getProperty(
+            selectedJob.property_id
           )}
           onClose={() =>
             setSelectedJob(null)

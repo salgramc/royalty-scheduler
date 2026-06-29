@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 export default function JobDetailsModal({
   booking,
   customer,
+  property,
   onClose,
   onRefresh,
 }) {
@@ -60,6 +61,9 @@ export default function JobDetailsModal({
     booking.status
   );
 
+  const isAirbnb =
+    booking.booking_type === "Airbnb";
+
   return (
     <div
       onClick={onClose}
@@ -103,7 +107,9 @@ export default function JobDetailsModal({
                 margin: 0,
               }}
             >
-              {customer?.first_name} {customer?.last_name}
+              {isAirbnb
+                ? property?.property_name
+                : `${customer?.first_name || ""} ${customer?.last_name || ""}`}
             </h2>
 
             <div
@@ -120,7 +126,8 @@ export default function JobDetailsModal({
             onClick={onClose}
             style={{
               border: "none",
-              background: "transparent",
+              background:
+                "transparent",
               fontSize: "22px",
               cursor: "pointer",
             }}
@@ -143,34 +150,102 @@ export default function JobDetailsModal({
                 marginTop: "4px",
               }}
             >
-              {customer?.street_address}, {customer?.city ||
-                "No address"}
+              {isAirbnb
+                ? `${property?.street_address || ""}, ${property?.city || ""}`
+                : `${customer?.street_address || ""}, ${customer?.city || ""}`}
             </div>
           </div>
 
-          <div>
-            <strong>Service</strong>
+          {isAirbnb && (
+            <>
+              <div>
+                <strong>
+                  Door Code
+                </strong>
 
-            <div
-              style={{
-                marginTop: "4px",
-              }}
-            >
-              {booking.service_type}
-            </div>
-          </div>
+                <div
+                  style={{
+                    marginTop: "4px",
+                  }}
+                >
+                  {property?.door_code ||
+                    "Not Set"}
+                </div>
+              </div>
 
-          <div>
-            <strong>Frequency</strong>
+              <div>
+                <strong>
+                  Inventory Code
+                </strong>
 
-            <div
-              style={{
-                marginTop: "4px",
-              }}
-            >
-              {booking.frequency}
-            </div>
-          </div>
+                <div
+                  style={{
+                    marginTop: "4px",
+                  }}
+                >
+                  {property?.inventory_code ||
+                    "Not Set"}
+                </div>
+              </div>
+
+              {property?.notes && (
+                <div>
+                  <strong>
+                    Property Notes
+                  </strong>
+
+                  <div
+                    style={{
+                      background:
+                        "#F9FAFB",
+                      padding:
+                        "14px",
+                      borderRadius:
+                        "10px",
+                      marginTop:
+                        "8px",
+                      whiteSpace:
+                        "pre-wrap",
+                    }}
+                  >
+                    {property.notes}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {!isAirbnb && (
+            <>
+              <div>
+                <strong>
+                  Service
+                </strong>
+
+                <div
+                  style={{
+                    marginTop: "4px",
+                  }}
+                >
+                  {booking.service_type}
+                </div>
+              </div>
+
+              <div>
+                <strong>
+                  Frequency
+                </strong>
+
+                <div
+                  style={{
+                    marginTop: "4px",
+                  }}
+                >
+                  {booking.frequency}
+                </div>
+              </div>
+            </>
+          )}
 
           <div>
             <strong>Status</strong>
@@ -209,7 +284,8 @@ export default function JobDetailsModal({
                 style={{
                   background:
                     "#FEF3C7",
-                  padding: "14px",
+                  padding:
+                    "14px",
                   borderRadius:
                     "10px",
                   marginTop: "8px",
@@ -244,7 +320,8 @@ export default function JobDetailsModal({
                   "10px",
                 border:
                   "1px solid #D1D5DB",
-                resize: "vertical",
+                resize:
+                  "vertical",
                 boxSizing:
                   "border-box",
               }}
@@ -262,7 +339,8 @@ export default function JobDetailsModal({
           <button
             onClick={saveNotes}
             style={{
-              background: "#1693E6",
+              background:
+                "#1693E6",
               color: "#fff",
               border: "none",
               padding:
