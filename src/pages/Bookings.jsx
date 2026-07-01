@@ -1,202 +1,48 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import BookingModal from "../components/BookingModal";
 
 export default function Bookings() {
-  const [customers, setCustomers] = useState([]);
-  const [cleaners, setCleaners] = useState([]);
   const [bookings, setBookings] = useState([]);
-
-  const [hosts, setHosts] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [properties, setProperties] = useState([]);
 
-  const [bookingType, setBookingType] = useState("Residential");
+  const [search, setSearch] = useState("");
 
-  const [hostId, setHostId] = useState("");
-  const [propertyId, setPropertyId] = useState("");
+  const [showBookingModal, setShowBookingModal] =
+    useState(false);
 
-  const [customerId, setCustomerId] = useState("");
-  const [cleanerId, setCleanerId] = useState("");
-  const [cleaningDate, setCleaningDate] = useState("");
-  const [cleaningTime, setCleaningTime] = useState("");
-  const [frequency, setFrequency] = useState("one_time");
-  const [serviceType, setServiceType] = useState("Recurring Cleaning");
+  const [selectedBooking, setSelectedBooking] =
+    useState(null);
 
-    async function loadData() {
-        const { data: customersData } = await supabase
-            .from("customers")
-            .select("*")
-            .order("first_name");
-
-        const { data: cleanersData } = await supabase
-            .from("cleaners")
-            .select("*")
-            .order("first_name");
-
-        const { data: hostsData } = await supabase
-            .from("hosts")
-            .select("*")
-            .order("first_name");
-
-        const { data: propertiesData } = await supabase
-            .from("properties")
-            .select("*")
-            .order("property_name");
-
-        const { data: bookingsData } = await supabase
-            .from("bookings")
-            .select("*")
-            .order("cleaning_date", {
-            ascending: true,
-            });
-
-        setCustomers(customersData || []);
-        setCleaners(cleanersData || []);
-        setHosts(hostsData || []);
-        setProperties(propertiesData || []);
-        setBookings(bookingsData || []);
-    }
-
-    async function addBooking() {
-    if (bookingType === "Airbnb") {
-        if (
-        !hostId ||
-        !propertyId ||
-        !cleanerId ||
-        !cleaningDate ||
-        !cleaningTime
-        ) {
-        alert(
-            "Please fill out all required fields."
-        );
-        return;
-        }
-
-        const { error } =
-        await supabase
-            .from("bookings")
-            .insert({
-            booking_type: "Airbnb",
-            host_id: hostId,
-            property_id: propertyId,
-            cleaner_id: cleanerId,
-            cleaning_date: cleaningDate,
-            cleaning_time: cleaningTime,
-            status: "Scheduled",
-            });
-
-        if (error) {
-        alert(error.message);
-        return;
-        }
-
-        setHostId("");
-        setPropertyId("");
-        setCleanerId("");
-        setCleaningDate("");
-        setCleaningTime("");
-
-        loadData();
-        return;
-    }
-
-    if (
-        !customerId ||
-        !cleanerId ||
-        !cleaningDate ||
-        !serviceType
-    ) {
-        alert(
-        "Please fill out all required fields."
-        );
-        return;
-    }
-
-    const bookingsToInsert = [];
-
-    let repeatCount = 1;
-
-    if (
-        serviceType ===
-        "Recurring Cleaning"
-    ) {
-        if (frequency === "weekly")
-        repeatCount = 12;
-
-        if (frequency === "biweekly")
-        repeatCount = 12;
-
-        if (frequency === "monthly")
-        repeatCount = 6;
-    }
-
-    for (
-        let i = 0;
-        i < repeatCount;
-        i++
-    ) {
-        const date = new Date(
-        cleaningDate +
-            "T00:00:00"
-        );
-
-        if (frequency === "weekly") {
-        date.setDate(
-            date.getDate() +
-            i * 7
-        );
-        }
-
-        if (
-        frequency === "biweekly"
-        ) {
-        date.setDate(
-            date.getDate() +
-            i * 14
-        );
-        }
-
-        if (
-        frequency === "monthly"
-        ) {
-        date.setMonth(
-            date.getMonth() + i
-        );
-        }
-
-        bookingsToInsert.push({
-        booking_type:
-            "Residential",
-        customer_id:
-            customerId,
-        cleaner_id:
-            cleanerId,
-        cleaning_date:
-            date
-            .toISOString()
-            .split("T")[0],
-        cleaning_time:
-            cleaningTime,
-        frequency,
-        service_type:
-            serviceType,
-        status: "Scheduled",
-        });
-    }
-
-    const { error } =
-        await supabase
+  async function loadData() {
+    const [
+      bookingsRes,
+      customersRes,
+      propertiesRes,
+    ] = await Promise.all([
+      supabase
         .from("bookings")
-        .insert(
-            bookingsToInsert
-        );
+        .select("*")
+        .order("cleaning_date"),
 
-    if (error) {
-        alert(error.message);
-        return;
-    }
+      supabase
+        .from("customers")
+        .select("*"),
 
+      supabase
+        .from("properties")
+        .select("*"),
+    ]);
+
+    setBookings(bookingsRes.data || []);
+    setCustomers(customersRes.data || []);
+    setProperties(propertiesRes.data || []);
+  }
+
+  useEffect(() => {
     loadData();
-    }
+  }, []);
 
   function getCustomer(id) {
     return customers.find(
@@ -204,358 +50,482 @@ export default function Bookings() {
     );
   }
 
-  function getCleaner(id) {
-    return cleaners.find(
-      (c) => Number(c.id) === Number(id)
+  function getProperty(id) {
+    return properties.find(
+      (p) => Number(p.id) === Number(id)
     );
   }
 
-    function getProperty(id) {
-        return properties.find(
-            (p) => Number(p.id) === Number(id)
-        );
-    }
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const customer = getCustomer(
+        booking.customer_id
+      );
 
-    function getHost(id) {
-        return hosts.find(
-            (h) => Number(h.id) === Number(id)
-        );
-    }
+      const property = getProperty(
+        booking.property_id
+      );
 
-    const filteredProperties =
-        properties.filter(
-            (property) =>
-            Number(property.host_id) ===
-            Number(hostId)
-    );
+      const searchText = [
+        customer?.first_name,
+        customer?.last_name,
+        customer?.street_address,
+        customer?.city,
+        property?.property_name,
+        property?.street_address,
+        property?.city,
+      ]
+        .join(" ")
+        .toLowerCase();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+      return searchText.includes(
+        search.toLowerCase()
+      );
+    });
+  }, [
+    bookings,
+    customers,
+    properties,
+    search,
+  ]);
 
-    return (
-    <div style={{ padding: 20 }}>
-        <h1>Bookings</h1>
+  return (
+    <div
+      style={{
+        maxWidth: 1400,
+        margin: "0 auto",
+        padding: 30,
+      }}
+    >
+      {/* HEADER */}
 
-        <select
-        value={bookingType}
-        onChange={(e) =>
-            setBookingType(e.target.value)
-        }
-        >
-        <option value="Residential">
-            Residential
-        </option>
-
-        <option value="Airbnb">
-            Airbnb
-        </option>
-        </select>
-
-        <br />
-        <br />
-
-        {bookingType === "Residential" && (
-        <>
-            <select
-            value={customerId}
-            onChange={(e) =>
-                setCustomerId(e.target.value)
-            }
-            >
-            <option value="">
-                Select Customer
-            </option>
-
-            {customers.map((customer) => (
-                <option
-                key={customer.id}
-                value={customer.id}
-                >
-                {customer.first_name}{" "}
-                {customer.last_name}
-                </option>
-            ))}
-            </select>
-
-            <br />
-            <br />
-        </>
-        )}
-
-        {bookingType === "Airbnb" && (
-        <>
-            <select
-            value={hostId}
-            onChange={(e) => {
-                setHostId(e.target.value);
-                setPropertyId("");
-            }}
-            >
-            <option value="">
-                Select Host
-            </option>
-
-            {hosts.map((host) => (
-                <option
-                key={host.id}
-                value={host.id}
-                >
-                {host.first_name}{" "}
-                {host.last_name}
-                </option>
-            ))}
-            </select>
-
-            <br />
-            <br />
-
-            <select
-            value={propertyId}
-            onChange={(e) =>
-                setPropertyId(
-                e.target.value
-                )
-            }
-            >
-            <option value="">
-                Select Property
-            </option>
-
-            {filteredProperties.map(
-                (property) => (
-                <option
-                    key={property.id}
-                    value={property.id}
-                >
-                    {
-                    property.property_name
-                    }
-                </option>
-                )
-            )}
-            </select>
-
-            <br />
-            <br />
-        </>
-        )}
-
-        <select
-        value={cleanerId}
-        onChange={(e) =>
-            setCleanerId(e.target.value)
-        }
-        >
-        <option value="">
-            Select Cleaner
-        </option>
-
-        {cleaners.map((cleaner) => (
-            <option
-            key={cleaner.id}
-            value={cleaner.id}
-            >
-            {cleaner.first_name}{" "}
-            {cleaner.last_name}
-            </option>
-        ))}
-        </select>
-
-        <br />
-        <br />
-
-        <input
-        type="date"
-        value={cleaningDate}
-        onChange={(e) =>
-            setCleaningDate(
-            e.target.value
-            )
-        }
-        />
-
-        <br />
-        <br />
-
-        <input
-        type="time"
-        value={cleaningTime}
-        onChange={(e) =>
-            setCleaningTime(
-            e.target.value
-            )
-        }
-        />
-
-        <br />
-        <br />
-
-        {bookingType ===
-        "Residential" && (
-        <>
-            <select
-            value={frequency}
-            onChange={(e) =>
-                setFrequency(
-                e.target.value
-                )
-            }
-            >
-            <option value="one_time">
-                One Time
-            </option>
-
-            <option value="weekly">
-                Weekly
-            </option>
-
-            <option value="biweekly">
-                Biweekly
-            </option>
-
-            <option value="monthly">
-                Monthly
-            </option>
-            </select>
-
-            <br />
-            <br />
-
-            <select
-            value={serviceType}
-            onChange={(e) =>
-                setServiceType(
-                e.target.value
-                )
-            }
-            >
-            <option value="Deep Clean">
-                Deep Clean
-            </option>
-
-            <option value="Recurring Cleaning">
-                Recurring Cleaning
-            </option>
-
-            <option value="Move In / Move Out">
-                Move In / Move Out
-            </option>
-            </select>
-
-            <br />
-            <br />
-        </>
-        )}
-
-        <button onClick={addBooking}>
-        Create Booking
-        </button>
-
-        <hr />
-
-        <h2>Upcoming Bookings</h2>
-
-        {bookings.map((booking) => {
-        const customer =
-            getCustomer(
-            booking.customer_id
-            );
-
-        const cleaner =
-            getCleaner(
-            booking.cleaner_id
-            );
-
-        const property =
-            getProperty(
-            booking.property_id
-            );
-
-        return (
-            <div
-            key={booking.id}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 36,
+        }}
+      >
+        <div>
+          <h1
             style={{
-                border:
-                "1px solid #ddd",
-                padding: "12px",
-                marginBottom:
-                "12px",
-                borderRadius: "8px",
+              fontSize: 64,
+              fontWeight: 700,
+              margin: 0,
+              color: "#111827",
             }}
+          >
+            Bookings
+          </h1>
+
+          <p
+            style={{
+              marginTop: 8,
+              color: "#6B7280",
+              fontSize: 18,
+            }}
+          >
+            Search and manage customer bookings
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            setSelectedBooking(null);
+            setShowBookingModal(true);
+          }}
+          style={{
+            background: "#0E5EA8",
+            color: "#FFFFFF",
+            border: "none",
+            borderRadius: 14,
+            padding: "16px 28px",
+            fontSize: 18,
+            fontWeight: 600,
+            cursor: "pointer",
+            boxShadow:
+              "0 8px 20px rgba(14,94,168,.18)",
+          }}
+        >
+          + Add Booking
+        </button>
+      </div>
+
+      {/* SEARCH */}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: 36,
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Search customer, host, property or address..."
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+          style={{
+            width: 700,
+            maxWidth: "100%",
+            padding: "18px 22px",
+            borderRadius: 16,
+            border: "1px solid #D1D5DB",
+            outline: "none",
+            fontSize: 18,
+            background: "#FFFFFF",
+          }}
+        />
+      </div>
+
+      {/* RESULTS START */}
+      {filteredBookings.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            color: "#6B7280",
+            padding: "80px 0",
+            fontSize: 18,
+          }}
+        >
+          No bookings found.
+        </div>
+      ) : (
+        Object.entries(
+          filteredBookings.reduce(
+            (groups, booking) => {
+              const customer =
+                booking.booking_type ===
+                "Residential"
+                  ? getCustomer(
+                      booking.customer_id
+                    )
+                  : getProperty(
+                      booking.property_id
+                    );
+
+              const key =
+                booking.booking_type ===
+                "Residential"
+                  ? `customer-${booking.customer_id}`
+                  : `property-${booking.property_id}`;
+
+              if (!groups[key]) {
+                groups[key] = {
+                  info: customer,
+                  type: booking.booking_type,
+                  bookings: [],
+                };
+              }
+
+              groups[key].bookings.push(
+                booking
+              );
+
+              return groups;
+            },
+            {}
+          )
+        ).map(([key, group]) => (
+          <div
+            key={key}
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid #E5E7EB",
+              borderRadius: 18,
+              padding: 24,
+              marginBottom: 24,
+              boxShadow:
+                "0 1px 3px rgba(0,0,0,.05)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
             >
-            <strong>
-                {booking.booking_type ===
-                "Airbnb"
-                ? property?.property_name
-                : `${customer?.first_name || ""} ${customer?.last_name || ""}`}
-            </strong>
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 28,
+                  }}
+                >
+                  {group.type ===
+                  "Residential"
+                    ? `${group.info?.first_name || ""} ${group.info?.last_name || ""}`
+                    : group.info
+                        ?.property_name}
+                </h2>
 
-            <br />
+                <div
+                  style={{
+                    color: "#6B7280",
+                    marginTop: 6,
+                  }}
+                >
+                  {group.type ===
+                  "Residential"
+                    ? `${group.info?.street_address || ""}, ${group.info?.city || ""}`
+                    : `${group.info?.street_address || ""}, ${group.info?.city || ""}`}
+                </div>
+              </div>
 
-            📍{" "}
-            {booking.booking_type ===
-            "Airbnb"
-                ? `${property?.street_address || ""}, ${property?.city || ""}`
-                : customer?.street_address &&
-                customer?.city
-                ? `${customer.street_address}, ${customer.city}`
-                : customer?.street_address ||
-                customer?.city ||
-                "No Address"}
-
-            <br />
-
-            👤 Assigned To:{" "}
-            {
-                cleaner?.first_name
-            }{" "}
-            {
-                cleaner?.last_name
-            }
-
-            <br />
-
-            📅{" "}
-            {
-                booking.cleaning_date
-            }
-
-            <br />
-
-            ⏰{" "}
-            {booking.cleaning_time ||
-                "Not Set"}
-
-            <br />
-
-            {booking.booking_type ===
-            "Airbnb" ? (
-                <>
-                🏠 Airbnb
-                <br />
-                </>
-            ) : (
-                <>
-                🧹{" "}
-                {
-                    booking.service_type
-                }
-                <br />
-                🔄{" "}
-                {
-                    booking.frequency
-                }
-                <br />
-                </>
-            )}
-
-            ✅{" "}
-            {booking.status ||
-                "Scheduled"}
+              <div
+                style={{
+                  fontWeight: 600,
+                  color: "#6B7280",
+                }}
+              >
+                {group.bookings.length}{" "}
+                Booking
+                {group.bookings.length !==
+                1
+                  ? "s"
+                  : ""}
+              </div>
             </div>
-        );
-        })}
+
+            {/* MONTHS GO HERE */}
+            {Object.entries(
+              group.bookings.reduce(
+                (months, booking) => {
+                  const month =
+                    new Date(
+                      booking.cleaning_date
+                    ).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "long",
+                        year: "numeric",
+                      }
+                    );
+
+                  if (!months[month]) {
+                    months[month] = [];
+                  }
+
+                  months[month].push(
+                    booking
+                  );
+
+                  return months;
+                },
+                {}
+              )
+            ).map(
+              ([month, monthBookings]) => (
+                <div
+                  key={month}
+                  style={{
+                    borderTop:
+                      "1px solid #F3F4F6",
+                    paddingTop: 18,
+                    marginTop: 18,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems:
+                        "center",
+                      cursor: "pointer",
+                      marginBottom: 18,
+                    }}
+                  >
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 22,
+                      }}
+                    >
+                      ▼ {month}
+                    </h3>
+
+                    <span
+                      style={{
+                        color: "#6B7280",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {
+                        monthBookings.length
+                      }{" "}
+                      Booking
+                      {monthBookings.length !==
+                      1
+                        ? "s"
+                        : ""}
+                    </span>
+                  </div>
+
+                  {monthBookings.map(
+                    (booking) => (
+                      <div
+                        key={booking.id}
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            "space-between",
+                          alignItems:
+                            "center",
+                          padding:
+                            "18px 20px",
+                          border:
+                            "1px solid #E5E7EB",
+                          borderRadius: 14,
+                          marginBottom: 14,
+                          background:
+                            "#FAFAFA",
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color: "#111827",
+                            }}
+                          >
+                            {new Date(
+                              booking.cleaning_date
+                            ).toLocaleDateString(
+                              "en-US",
+                              {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 6,
+                              color: "#6B7280",
+                              fontSize: 15,
+                            }}
+                          >
+                            {booking.cleaning_time}
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 10,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {booking.service_type}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 14,
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: 999,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              background:
+                                booking.status ===
+                                "Completed"
+                                  ? "#DCFCE7"
+                                  : booking.status ===
+                                    "In Progress"
+                                  ? "#DBEAFE"
+                                  : "#FEF3C7",
+                              color:
+                                booking.status ===
+                                "Completed"
+                                  ? "#166534"
+                                  : booking.status ===
+                                    "In Progress"
+                                  ? "#1E40AF"
+                                  : "#92400E",
+                            }}
+                          >
+                            {booking.status}
+                          </span>
+
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(
+                                booking
+                              );
+                              setShowBookingModal(
+                                true
+                              );
+                            }}
+                            style={{
+                              border: "none",
+                              background: "#0E5EA8",
+                              color: "#fff",
+                              padding:
+                                "10px 18px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            style={{
+                              border:
+                                "1px solid #EF4444",
+                              background:
+                                "#FFFFFF",
+                              color: "#DC2626",
+                              padding:
+                                "10px 18px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )
+            )}
+          </div>
+        ))
+      )}
+
+      {showBookingModal && (
+        <BookingModal
+          booking={selectedBooking}
+          onClose={() => {
+            setSelectedBooking(null);
+            setShowBookingModal(false);
+          }}
+          onSaved={() => {
+            loadData();
+            setSelectedBooking(null);
+            setShowBookingModal(false);
+          }}
+        />
+      )}
     </div>
-    );
+  );
 }

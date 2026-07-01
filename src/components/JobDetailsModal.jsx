@@ -12,11 +12,23 @@ export default function JobDetailsModal({
     booking.cleaner_notes || ""
   );
 
-  async function saveNotes() {
+  const [status, setStatus] = useState(
+    booking.status || "Scheduled"
+  );
+
+  const isAirbnb =
+    booking.booking_type === "Airbnb";
+
+  const address = isAirbnb
+    ? `${property?.street_address || ""} ${property?.city || ""}`
+    : `${customer?.street_address || ""} ${customer?.city || ""}`;
+
+  async function saveChanges() {
     const { error } = await supabase
       .from("bookings")
       .update({
         cleaner_notes: notes,
+        status,
       })
       .eq("id", booking.id);
 
@@ -26,43 +38,23 @@ export default function JobDetailsModal({
     }
 
     onRefresh();
-    alert("Notes saved");
+    onClose();
   }
 
-  function getStatusStyle(status) {
-    if (status === "Scheduled") {
-      return {
-        background: "#FEF3C7",
-        color: "#92400E",
-      };
-    }
-
-    if (status === "In Progress") {
-      return {
-        background: "#DBEAFE",
-        color: "#1E40AF",
-      };
-    }
-
-    if (status === "Completed") {
-      return {
-        background: "#DCFCE7",
-        color: "#166534",
-      };
-    }
-
-    return {
-      background: "#F3F4F6",
-      color: "#374151",
-    };
-  }
-
-  const statusStyle = getStatusStyle(
-    booking.status
-  );
-
-  const isAirbnb =
-    booking.booking_type === "Airbnb";
+  const statusColors = {
+    Scheduled: {
+      bg: "#FEF3C7",
+      text: "#92400E",
+    },
+    "In Progress": {
+      bg: "#DBEAFE",
+      text: "#1E40AF",
+    },
+    Completed: {
+      bg: "#DCFCE7",
+      text: "#166534",
+    },
+  };
 
   return (
     <div
@@ -70,26 +62,26 @@ export default function JobDetailsModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,.45)",
+        background: "rgba(15,23,42,.55)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        padding: 20,
         zIndex: 1000,
-        padding: "20px",
       }}
     >
       <div
-        onClick={(e) =>
-          e.stopPropagation()
-        }
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "#fff",
-          width: "700px",
+          width: 760,
           maxWidth: "100%",
-          borderRadius: "16px",
-          padding: "24px",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          borderRadius: 18,
+          padding: 28,
           boxShadow:
-            "0 10px 25px rgba(0,0,0,.15)",
+            "0 20px 50px rgba(0,0,0,.18)",
         }}
       >
         <div
@@ -97,28 +89,31 @@ export default function JobDetailsModal({
             display: "flex",
             justifyContent:
               "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
+            alignItems: "flex-start",
+            marginBottom: 24,
           }}
         >
           <div>
             <h2
               style={{
                 margin: 0,
+                fontSize: 30,
               }}
             >
               {isAirbnb
                 ? property?.property_name
-                : `${customer?.first_name || ""} ${customer?.last_name || ""}`}
+                : `${customer?.first_name} ${customer?.last_name}`}
             </h2>
 
             <div
               style={{
                 color: "#6B7280",
-                marginTop: "4px",
+                marginTop: 6,
               }}
             >
-              Job Details
+              {isAirbnb
+                ? "Airbnb Turnover"
+                : booking.service_type}
             </div>
           </div>
 
@@ -126,10 +121,12 @@ export default function JobDetailsModal({
             onClick={onClose}
             style={{
               border: "none",
-              background:
-                "transparent",
-              fontSize: "22px",
+              background: "#F3F4F6",
+              width: 42,
+              height: 42,
+              borderRadius: 10,
               cursor: "pointer",
+              fontSize: 18,
             }}
           >
             ✕
@@ -139,158 +136,120 @@ export default function JobDetailsModal({
         <div
           style={{
             display: "grid",
-            gap: "18px",
+            gap: 24,
           }}
         >
-          <div>
-            <strong>Address</strong>
+          {/* NAVIGATION */}
+
+          <button
+            onClick={() =>
+              window.open(
+                `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                  address
+                )}`,
+                "_blank"
+              )
+            }
+            style={{
+              width: "100%",
+              background: "#F8FAFC",
+              border: "1px solid #E5E7EB",
+              borderRadius: 14,
+              padding: 18,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                color: "#0E5EA8",
+                fontSize: 18,
+              }}
+            >
+              Navigate
+            </div>
 
             <div
               style={{
-                marginTop: "4px",
+                marginTop: 8,
+                fontWeight: 600,
               }}
             >
-              {isAirbnb
-                ? `${property?.street_address || ""}, ${property?.city || ""}`
-                : `${customer?.street_address || ""}, ${customer?.city || ""}`}
+              {address}
             </div>
-          </div>
 
-          {isAirbnb && (
-            <>
-              <div>
-                <strong>
-                  Door Code
-                </strong>
+            <div
+              style={{
+                marginTop: 8,
+                color: "#0E5EA8",
+                fontWeight: 600,
+              }}
+            >
+              Open Google Maps →
+            </div>
+          </button>
 
-                <div
-                  style={{
-                    marginTop: "4px",
-                  }}
-                >
-                  {property?.door_code ||
-                    "Not Set"}
-                </div>
-              </div>
-
-              <div>
-                <strong>
-                  Inventory Code
-                </strong>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                  }}
-                >
-                  {property?.inventory_code ||
-                    "Not Set"}
-                </div>
-              </div>
-
-              {property?.notes && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(180px,1fr))",
+              gap: 20,
+            }}
+          >
+            {!isAirbnb ? (
+              <>
                 <div>
-                  <strong>
-                    Property Notes
-                  </strong>
+                  <small>Service</small>
+                  <h3>{booking.service_type}</h3>
+                </div>
 
-                  <div
+                <div>
+                  <small>Frequency</small>
+                  <h3
                     style={{
-                      background:
-                        "#F9FAFB",
-                      padding:
-                        "14px",
-                      borderRadius:
-                        "10px",
-                      marginTop:
-                        "8px",
-                      whiteSpace:
-                        "pre-wrap",
+                      textTransform:
+                        "capitalize",
                     }}
                   >
-                    {property.notes}
-                  </div>
+                    {booking.frequency}
+                  </h3>
                 </div>
-              )}
-            </>
-          )}
-
-          {!isAirbnb && (
-            <>
-              <div>
-                <strong>
-                  Service
-                </strong>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                  }}
-                >
-                  {booking.service_type}
+              </>
+            ) : (
+              <>
+                <div>
+                  <small>Door Code</small>
+                  <h3>
+                    {property?.door_code ||
+                      "Not Set"}
+                  </h3>
                 </div>
-              </div>
 
-              <div>
-                <strong>
-                  Frequency
-                </strong>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                  }}
-                >
-                  {booking.frequency}
+                <div>
+                  <small>
+                    Inventory Code
+                  </small>
+                  <h3>
+                    {property?.inventory_code ||
+                      "Not Set"}
+                  </h3>
                 </div>
-              </div>
-            </>
-          )}
-
-          <div>
-            <strong>Status</strong>
-
-            <div
-              style={{
-                marginTop: "8px",
-              }}
-            >
-              <span
-                style={{
-                  background:
-                    statusStyle.background,
-                  color:
-                    statusStyle.color,
-                  padding:
-                    "6px 12px",
-                  borderRadius:
-                    "999px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-              >
-                {booking.status}
-              </span>
-            </div>
+              </>
+            )}
           </div>
 
           {booking.client_notes && (
             <div>
-              <strong>
-                Client Notes
-              </strong>
+              <h3>Booking Notes</h3>
 
               <div
                 style={{
-                  background:
-                    "#FEF3C7",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "10px",
-                  marginTop: "8px",
-                  whiteSpace:
-                    "pre-wrap",
+                  background: "#FEF3C7",
+                  padding: 16,
+                  borderRadius: 12,
+                  whiteSpace: "pre-wrap",
                 }}
               >
                 {booking.client_notes}
@@ -298,77 +257,139 @@ export default function JobDetailsModal({
             </div>
           )}
 
+          {isAirbnb &&
+            property?.notes && (
+              <div>
+                <h3>Property Notes</h3>
+
+                <div
+                  style={{
+                    background: "#F9FAFB",
+                    padding: 16,
+                    borderRadius: 12,
+                    whiteSpace:
+                      "pre-wrap",
+                  }}
+                >
+                  {property.notes}
+                </div>
+              </div>
+            )}
+
           <div>
-            <strong>
-              Cleaner Notes
-            </strong>
+            <h3>Status</h3>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              {Object.keys(
+                statusColors
+              ).map((item) => (
+                <button
+                  key={item}
+                  onClick={() =>
+                    setStatus(item)
+                  }
+                  style={{
+                    padding:
+                      "10px 18px",
+                    borderRadius: 999,
+                    border:
+                      status === item
+                        ? "none"
+                        : "1px solid #D1D5DB",
+                    background:
+                      status === item
+                        ? statusColors[
+                            item
+                          ].bg
+                        : "#fff",
+                    color:
+                      status === item
+                        ? statusColors[
+                            item
+                          ].text
+                        : "#374151",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3>Cleaner Notes</h3>
 
             <textarea
+              rows={7}
               value={notes}
               onChange={(e) =>
                 setNotes(
                   e.target.value
                 )
               }
-              rows={8}
-              placeholder="Optional notes about the cleaning..."
               style={{
                 width: "100%",
-                marginTop: "8px",
-                padding: "12px",
-                borderRadius:
-                  "10px",
+                padding: 14,
+                borderRadius: 12,
                 border:
                   "1px solid #D1D5DB",
-                resize:
-                  "vertical",
                 boxSizing:
                   "border-box",
+                resize: "vertical",
               }}
             />
           </div>
-        </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            marginTop: "24px",
-          }}
-        >
-          <button
-            onClick={saveNotes}
+          <div
             style={{
-              background:
-                "#1693E6",
-              color: "#fff",
-              border: "none",
-              padding:
-                "10px 18px",
-              borderRadius:
-                "10px",
-              cursor: "pointer",
-              fontWeight: "600",
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
             }}
           >
-            Save Notes
-          </button>
+            <button
+              onClick={
+                saveChanges
+              }
+              style={{
+                flex: 1,
+                background:
+                  "#0E5EA8",
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                padding: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Save Changes
+            </button>
 
-          <button
-            onClick={onClose}
-            style={{
-              background:
-                "#F3F4F6",
-              border: "none",
-              padding:
-                "10px 18px",
-              borderRadius:
-                "10px",
-              cursor: "pointer",
-            }}
-          >
-            Close
-          </button>
+            <button
+              onClick={onClose}
+              style={{
+                padding:
+                  "14px 22px",
+                borderRadius: 12,
+                border:
+                  "1px solid #D1D5DB",
+                background:
+                  "#FFFFFF",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
